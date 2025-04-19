@@ -13,7 +13,7 @@ func main() {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":  "localhost:9092",
 		"group.id":           "myGroup",
-		"enable.auto.commit": true,
+		"enable.auto.commit": "true",
 		"security.protocol":  "plaintext",
 	})
 	/*Error handling is important*/
@@ -28,11 +28,7 @@ func main() {
 		ev := consumer.Poll(100) // 100ms timeout for polling events
 		switch e := ev.(type) {
 		case *kafka.Message:
-			fmt.Printf("proccessing order: %s\n", string(e.Value))
-			_, err := consumer.CommitMessage(e)
-			if err != nil {
-				log.Fatal("fail to commit message .", err)
-			}
+			fmt.Printf("data team reading order : %s\n", string(e.Value))
 		case kafka.Error:
 			fmt.Printf("Error: %v\n", e)
 

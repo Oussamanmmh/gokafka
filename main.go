@@ -38,6 +38,7 @@ func (op *OrderPlacer) placeOrder(orderType string, size int) error {
 		log.Fatal(err)
 	}
 	<-op.deleveryChan
+	fmt.Println("placed order to the queue: ", format)
 
 	return nil
 }
