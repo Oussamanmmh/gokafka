@@ -12,7 +12,7 @@ func main() {
 
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":  "localhost:9092",
-		"group.id":           "myGroup",
+		"group.id":           "myDataGroup",
 		"enable.auto.commit": "true",
 		"security.protocol":  "plaintext",
 	})
