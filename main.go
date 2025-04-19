@@ -8,6 +8,39 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
+type OrderPlacer struct {
+	producer     *kafka.Producer
+	topic        string
+	deleveryChan chan kafka.Event
+}
+
+func NewOrderPlacer(p *kafka.Producer, topic string) *OrderPlacer {
+	return &OrderPlacer{
+		producer:     p,
+		topic:        topic,
+		deleveryChan: make(chan kafka.Event, 10000),
+	}
+
+}
+
+func (op *OrderPlacer) placeOrder(orderType string, size int) error {
+	format := fmt.Sprintf("%s - %d", orderType, size)
+	payload := []byte(format) // create a byte slice from the string
+	err := op.producer.Produce(&kafka.Message{
+		TopicPartition: kafka.TopicPartition{
+			Topic:     &op.topic,
+			Partition: kafka.PartitionAny,
+		},
+		Value: payload,
+	}, op.deleveryChan)
+	if err != nil {
+		log.Fatal(err)
+	}
+	<-op.deleveryChan
+
+	return nil
+}
+
 func main() {
 
 	topic := "HVSE" //name of the kafka topic
@@ -33,13 +66,16 @@ func main() {
 		consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 			"bootstrap.servers":  "localhost:9092",
 			"group.id":           "myGroup",
-			"auto.offset,reset":  "smallest",
-			"enable.auto.commit": "yes",
+			"enable.auto.commit": "true",
 			"security.protocol":  "plaintext",
 		})
+		/*Error handling is important*/
+		if err != nil {
+			log.Fatal("fail to create consumer .", err)
+		}
 		err = consumer.Subscribe(topic, nil)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("fail to create subscribe .", err)
 		}
 		for {
 			ev := consumer.Poll(100) // 100ms timeout for polling events
@@ -55,21 +91,10 @@ func main() {
 	/*create a channel to handle delivery reports
 	"deleveryChan" is a channel of type kafka.Event with a buffer size of 10000
 	"topic" is the name of the Kafka topic to which messages will be sent*/
+	op := NewOrderPlacer(p, topic)
 
-	deleveryChan := make(chan kafka.Event, 10000)
-
-	/*produce a message to the specified topic
-	"p.Produce" sends the message to the Kafka broker
-	*/
-	err = p.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value:          []byte("Hello World !"),
-	}, deleveryChan)
-	if err != nil {
-		log.Fatal(err)
+	for {
+		op.placeOrder("buy", 100)
 	}
-	e := <-deleveryChan
-
-	fmt.Printf("%+v", e)
 
 }
