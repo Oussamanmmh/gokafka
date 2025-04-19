@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -62,39 +63,18 @@ func main() {
 		fmt.Printf("Failed to create producer: %s\n", err)
 		os.Exit(1)
 	}
-	go func() {
-		consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
-			"bootstrap.servers":  "localhost:9092",
-			"group.id":           "myGroup",
-			"enable.auto.commit": "true",
-			"security.protocol":  "plaintext",
-		})
-		/*Error handling is important*/
-		if err != nil {
-			log.Fatal("fail to create consumer .", err)
-		}
-		err = consumer.Subscribe(topic, nil)
-		if err != nil {
-			log.Fatal("fail to create subscribe .", err)
-		}
-		for {
-			ev := consumer.Poll(100) // 100ms timeout for polling events
-			switch e := ev.(type) {
-			case *kafka.Message:
-				fmt.Printf("Received message: %s\n", string(e.Value))
-			case kafka.Error:
-				fmt.Printf("Error: %v\n", e)
 
-			}
-		}
-	}()
 	/*create a channel to handle delivery reports
 	"deleveryChan" is a channel of type kafka.Event with a buffer size of 10000
 	"topic" is the name of the Kafka topic to which messages will be sent*/
 	op := NewOrderPlacer(p, topic)
 
-	for {
-		op.placeOrder("buy", 100)
+	for i := 0; i < 1000; i++ {
+		err := op.placeOrder("buy", i)
+		if err != nil {
+			log.Fatal("fail to place order", err)
+		}
+		time.Sleep(time.Second * 2)
 	}
 
 }
